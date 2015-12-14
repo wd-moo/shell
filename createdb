@@ -1,0 +1,83 @@
+#!/bin/sh
+#intend:to create oracle db manual 
+#author:wd
+#version: createdb
+
+
+#usage: exec by oracle
+
+
+export ORACLE_SID=exp
+
+cd $ORACLE_HOME/dbs
+orapwd file=orapwd$ORACLE_SID password=oracle entries=30
+cat init.ora |grep -v ^#|grep -v ^$ > initexp.ora
+
+mkdir -p $ORACLE_BASE/admin/$ORACLE_SID/adump
+
+#to manual confirm
+read -p " vim your pfile manual , yes/no?" yn
+ case $yn in
+        [Yy]* ) echo "continue ..."; break;;
+        [Nn]* ) exit;;
+        * ) echo "Please answer yes or no.";;
+   esac
+
+
+
+#logfilepath=
+
+echo "
+CREATE DATABASE \$ORACLE_SID
+   USER SYS IDENTIFIED BY oracle
+   USER SYSTEM IDENTIFIED BY oracle
+   LOGFILE GROUP 1 (\'+DATA\',\'+DATA\') SIZE 100M BLOCKSIZE 512,
+           GROUP 2 (\'+DATA\',\'+DATA\') SIZE 100M BLOCKSIZE 512,
+           GROUP 3 (\'+DATA\',\'+DATA\') SIZE 100M BLOCKSIZE 512
+   MAXLOGFILES 50
+   MAXLOGMEMBERS 10
+   MAXLOGHISTORY 1
+   MAXDATAFILES 100
+   CHARACTER SET ZHS16GBK
+   NATIONAL CHARACTER SET AL16UTF16
+   EXTENT MANAGEMENT LOCAL
+   DATAFILE \'+DATA/EXP/datafiles/system01.dbf\' SIZE 325M REUSE
+   SYSAUX DATAFILE \'+DATA/EXP/datafiles/sysaux01.dbf\' SIZE 325M REUSE
+   DEFAULT TABLESPACE users
+      DATAFILE \'+DATA/EXP/datafiles/users01.dbf\'
+      SIZE 500M REUSE AUTOEXTEND ON MAXSIZE UNLIMITED
+   DEFAULT TEMPORARY TABLESPACE tempts1
+      TEMPFILE \'+DATA/EXP/datafiles/temp01.dbf\'
+      SIZE 20M REUSE
+   UNDO TABLESPACE undotbs1
+      DATAFILE \'+DATA/EXP/datafiles/undotbs01.dbf\'
+      SIZE 200M REUSE AUTOEXTEND ON MAXSIZE UNLIMITED;
+" > /home/oracle/createdb.sql
+
+
+cat /home/oracle/createdb.sql
+
+#to manual confirm
+read -p " above correct , yes/no?" yn
+ case $yn in
+        [Yy]* ) echo "continue ..."; break;;
+        [Nn]* ) exit;;
+        * ) echo "Please answer yes or no.";;
+   esac
+
+su - grid <<eof
+#ORACLE_SID
+ asmcmd mkdir -p exp
+eof 
+
+su - oracle 
+export ORACLE_SID=exp
+dba <<oraeof
+@/home/oracle/createdb.sql
+@?/rdbms/admin/catalog.sql
+@?/rdbms/admin/catproc.sql
+oraeof
+
+
+
+
